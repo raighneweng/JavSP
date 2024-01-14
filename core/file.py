@@ -2,7 +2,6 @@
 import os
 import re
 import sys
-import ctypes
 import logging
 import itertools
 from sys import platform
@@ -177,11 +176,11 @@ def replace_illegal_chars(name):
 
 def is_remote_drive(path: str):
     """判断一个路径是否为远程映射到本地"""
-    #TODO: 当前仅支持Windows平台
-    DRIVE_REMOTE = 0x4
-    drive = os.path.splitdrive(os.path.abspath(path))[0] + os.sep
-    result = ctypes.windll.kernel32.GetDriveTypeW(drive)
-    return result == DRIVE_REMOTE
+    # #TODO: 当前仅支持Windows平台
+    # DRIVE_REMOTE = 0x4
+    # drive = os.path.splitdrive(os.path.abspath(path))[0] + os.sep
+    # result = ctypes.windll.kernel32.GetDriveTypeW(drive)
+    return True
 
 
 def get_remaining_path_len(path):
