@@ -35,9 +35,9 @@ def get_urls_of_cid(cid: str) -> Tuple[str, str]:
     """搜索cid可能的影片URL"""
     r = request.get(f"https://www.dmm.co.jp/search/?redirect=1&enc=UTF-8&category=&searchstr={cid}&commit.x=0&commit.y=0")
     if r.status_code == 404:
-        raise MovieNotFoundError(__name__, movie.cid)
+        raise MovieNotFoundError(__name__, cid)
     r.raise_for_status()
-    html = resp2html(r)
+    html = resp2html_wrapper(r)
     result = html.xpath("//ul[@id='list']/li/div/p/a/@href")
     parsed_result = {}
     for url in result:
@@ -54,7 +54,7 @@ def get_urls_of_cid(cid: str) -> Tuple[str, str]:
     if cid not in parsed_result:
         if len(result) > 0:
             logger.debug(f"Unknown URL in search result: " + ', '.join(result))
-        raise MovieNotFoundError(__name__, movie.cid)
+        raise MovieNotFoundError(__name__, cid)
     sorted_result = sort_search_result(parsed_result[cid])
     return sorted_result
 
@@ -86,7 +86,9 @@ def parse_data(movie: MovieInfo):
                 movie.url = d['url']
                 break
             except:
-                if id(d) == id(urls[-1]):
+                logger.debug(f"Fail to parse {d['url']}", exc_info=True)
+                if d is urls[-1]:
+                    logger.warning(f"在fanza查找到的cid={movie.cid}的影片页面均解析失败")
                     raise
     else:
         html = resp2html_wrapper(r0)
@@ -139,7 +141,7 @@ def parse_videoa_page(movie: MovieInfo, html):
             score = float(match.group()) * 2
             movie.score = f'{score:.2f}'
     else:
-        score_img = container.xpath("//td[@class='dcd-review__anchor_content']/img/@src")[0]
+        score_img = container.xpath("//td[text()='平均評価：']/following-sibling::td/img/@src")[0]
         movie.score = int(score_img.split('/')[-1].split('.')[0]) # 00, 05 ... 50
     
     if cfg.Crawler.hardworking_mode:
@@ -194,7 +196,7 @@ def parse_anime_page(movie: MovieInfo, html):
     cid = container.xpath("//td[text()='品番：']/following-sibling::td/text()")[0].strip()
     plot = container.xpath("//div[@class='mg-b20 lh4']/p")[0].text_content().strip()
     preview_pics = container.xpath("//a[@name='sample-image']/img/@src")
-    score_img = container.xpath("//td[@class='dcd-review__anchor_content']/img/@src")[0]
+    score_img = container.xpath("//td[text()='平均評価：']/following-sibling::td/img/@src")[0]
     score = int(score_img.split('/')[-1].split('.')[0]) # 00, 05 ... 50
 
     movie.cid = cid
@@ -220,8 +222,7 @@ if __name__ == "__main__":
     pretty_errors.configure(display_link=True)
     logger.root.handlers[1].level = logging.DEBUG
 
-    movie = MovieInfo(cid='1stars931r')
-    parse_data(movie)
+    movie = MovieInfo(cid='145tb017')
     try:
         print(movie)
     except CrawlerError as e:
